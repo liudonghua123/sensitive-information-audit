@@ -139,6 +139,7 @@ const messages = {
                 rulesTriggered: 'Rules Triggered',
                 rulesUsed: 'Rules Used',
             },
+            deleteConfirm: 'Are you sure you want to delete this scan task?',
         },
     },
     'zh-CN': {
@@ -278,6 +279,7 @@ const messages = {
                 rulesTriggered: '触发的规则',
                 rulesUsed: '使用的规则',
             },
+            deleteConfirm: '确定要删除此扫描任务吗？',
         },
     },
 }

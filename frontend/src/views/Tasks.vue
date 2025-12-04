@@ -398,7 +398,13 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useToast, useConfirm } from '../composables/useToast';
 import api from '../api';
+
+const { t } = useI18n();
+const toast = useToast();
+const confirm = useConfirm();
 
 const tasks = ref([]);
 const connections = ref([]);
@@ -500,7 +506,13 @@ const createTask = async () => {
 };
 
 const deleteTask = async (task) => {
-  if (!confirm('Are you sure you want to delete this scan task?')) return;
+  const confirmed = await confirm.show({
+    title: t('common.confirm'),
+    message: t('tasks.deleteConfirm'),
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel')
+  });
+  if (!confirmed) return;
   try {
     await api.delete(`/tasks/${task.id}`);
     fetchTasks();
