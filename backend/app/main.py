@@ -53,7 +53,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 # Mount static files
 
 # Ensure frontend/dist exists or handle it
-static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
+static_dir = os.path.join(os.path.dirname(__file__), "public")
 if os.path.exists(static_dir):
     app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
 

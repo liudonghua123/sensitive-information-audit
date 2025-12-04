@@ -33,6 +33,11 @@ FastAPI-based backend for the Sensitive Information Audit System.
    uv run python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
    ```
 
+5. **Package an executable**
+   ```bash
+   pyinstaller main.py --onefile --name sensitive-information-audit.exe --add-data "app;app" --hidden-import uvicorn --hidden-import aiosqlite --hidden-import bcrypt --hidden-import passlib.handlers.bcrypt --paths "/full/path/to/.venv/Lib/site-packages"
+   ```
+
 ## API Documentation
 
 Once the server is running, visit:
