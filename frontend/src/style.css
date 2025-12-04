@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    font-family: 'Inter', sans-serif;
+    @apply bg-gray-50 text-gray-900;
+}
+
+.glass-panel {
+    @apply bg-white bg-opacity-70 backdrop-filter backdrop-blur-lg border border-white border-opacity-20 shadow-xl;
+}
+
+.btn-primary {
+    @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200;
+}
+
+.btn-secondary {
+    @apply inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200;
+}
+
+.input-field {
+    @apply appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200;
+}
+
+/* Toast customization */
+.Vue-Toastification__toast {
+    @apply rounded-lg shadow-lg;
+}
+
+.Vue-Toastification__toast--success {
+    @apply bg-green-500;
+}
+
+.Vue-Toastification__toast--error {
+    @apply bg-red-500;
+}
+
+.Vue-Toastification__toast--info {
+    @apply bg-blue-500;
+}
+
+.Vue-Toastification__toast--warning {
+    @apply bg-yellow-500;
+}
