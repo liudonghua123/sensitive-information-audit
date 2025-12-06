@@ -362,7 +362,11 @@ const testConnectionHandler = async () => {
   testing.value = true;
   testResult.value = null;
   try {
-    const response = await api.post('/connections/test', formData.value);
+    const payload = { ...formData.value };
+    if (isEditMode.value && editingId.value) {
+      payload.id = editingId.value;
+    }
+    const response = await api.post('/connections/test', payload);
     testResult.value = { success: true, message: t('connections.testSuccess') };
   } catch (e) {
     const errorMsg = e.response?.data?.detail || e.message;

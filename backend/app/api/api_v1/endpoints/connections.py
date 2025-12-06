@@ -4,7 +4,7 @@ from sqlalchemy.future import select
 from typing import List
 from app.db import models
 from app.api import deps
-from app.schemas import Connection, ConnectionCreate
+from app.schemas import Connection, ConnectionCreate, ConnectionTest
 from app.services.connector import DbConnector
 
 router = APIRouter()
@@ -37,18 +37,26 @@ async def create_connection(
 
 @router.post("/test")
 async def test_connection(
-    connection_in: ConnectionCreate,
+    connection_in: ConnectionTest,
+    db: AsyncSession = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_user)
 ):
     """Test a database connection without saving it"""
     try:
+        # If password is empty and we have an ID, try to get it from DB
+        password = connection_in.password
+        if not password and connection_in.id:
+            existing_conn = await db.get(models.DbConnection, connection_in.id)
+            if existing_conn:
+                password = existing_conn.password_encrypted
+
         connector = DbConnector()
         engine = connector.get_engine(
             db_type=connection_in.db_type,
             host=connection_in.host,
             port=connection_in.port,
             username=connection_in.username,
-            password=connection_in.password,
+            password=password,
             db_name=connection_in.db_name
         )
         

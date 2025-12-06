@@ -71,6 +71,9 @@ class ConnectionBase(BaseModel):
 class ConnectionCreate(ConnectionBase):
     password: Optional[str] = None
 
+class ConnectionTest(ConnectionCreate):
+    id: Optional[int] = None
+
 class ConnectionUpdate(ConnectionBase):
     password: Optional[str] = None
 
