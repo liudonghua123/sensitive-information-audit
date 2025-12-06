@@ -35,7 +35,7 @@ FastAPI-based backend for the Sensitive Information Audit System.
 
 5. **Package an executable**
    ```bash
-   pyinstaller main.py --onefile --name sensitive-information-audit.exe --add-data "app;app" --hidden-import uvicorn --hidden-import aiosqlite --hidden-import bcrypt --hidden-import passlib.handlers.bcrypt --paths "/full/path/to/.venv/Lib/site-packages"
+   pyinstaller main.py --onefile --name sensitive-information-audit.exe --add-data "app;app" --hidden-import uvicorn --hidden-import aiosqlite --hidden-import aiomysql --hidden-import bcrypt --hidden-import passlib.handlers.bcrypt --paths "/full/path/to/.venv/Lib/site-packages"
    ```
 
 ## API Documentation
