@@ -341,8 +341,8 @@
                               {{ result.rule_name }}
                             </span>
                           </td>
-                          <td class="px-4 py-3 text-sm font-mono text-gray-500 cursor-pointer" @click="openDetailModal(result)" title="Click to view details">
-                            <div class="truncate max-w-md" v-html="highlightContent(result.sensitive_content_masked, result.rule_name)"></div>
+                          <td class="px-4 py-3 text-sm font-mono text-gray-500 cursor-pointer hover:bg-blue-50 transition-colors" @click="openDetailModal(result)" title="Click to view full details">
+                            <div class="truncate max-w-md" v-html="getHighlightedSnippet(result.sensitive_content_masked, result.rule_name, 100)"></div>
                           </td>
                         </tr>
                       </tbody>
@@ -381,7 +381,15 @@
                 <span class="font-semibold">Column:</span> {{ selectedDetail?.column_name }}<br>
                 <span class="font-semibold">Rule:</span> {{ selectedDetail?.rule_name }}
               </p>
-              <div class="bg-gray-50 p-3 rounded border border-gray-200 font-mono text-sm break-all max-h-60 overflow-y-auto" v-html="highlightContent(selectedDetail?.sensitive_content_masked, selectedDetail?.rule_name)"></div>
+              <div class="bg-gray-50 p-3 rounded border border-gray-200 font-mono text-sm break-all max-h-96 overflow-y-auto">
+                <div v-if="!showFullDetail && selectedDetail?.sensitive_content_masked?.length > 1000">
+                  <div v-html="getHighlightedSnippet(selectedDetail?.sensitive_content_masked, selectedDetail?.rule_name, 500)"></div>
+                  <button @click="showFullDetail = true" class="mt-2 text-xs text-primary-600 hover:text-primary-700 font-medium focus:outline-none">
+                    Show Full Content ({{ formatBytes(selectedDetail?.sensitive_content_masked?.length) }})
+                  </button>
+                </div>
+                <div v-else v-html="highlightContent(selectedDetail?.sensitive_content_masked, selectedDetail?.rule_name)"></div>
+              </div>
             </div>
           </div>
           <div class="mt-5 sm:mt-6">
@@ -425,6 +433,7 @@ const tableSearchQuery = ref('');
 const selectedResultRule = ref('');
 const showDetailModal = ref(false);
 const selectedDetail = ref(null);
+const showFullDetail = ref(false);
 
 const fetchTasks = async () => {
   try {
@@ -656,28 +665,101 @@ const availableResultRules = computed(() => {
   return Array.from(ruleNames);
 });
 
+const escapeHtml = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 const highlightContent = (content, ruleName) => {
   if (!content) return '';
   const rule = rules.value.find(r => r.name === ruleName);
-  if (!rule) return content;
+  if (!rule) return escapeHtml(content);
 
-  let highlighted = content;
   try {
+    let regex;
     if (rule.rule_type === 'regex') {
-      const regex = new RegExp(rule.content, 'gi');
-      highlighted = content.replace(regex, match => `<mark class="bg-yellow-200 text-yellow-900 rounded px-0.5">${match}</mark>`);
+      regex = new RegExp(rule.content, 'gi');
     } else {
-      const regex = new RegExp(rule.content.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      highlighted = content.replace(regex, match => `<mark class="bg-yellow-200 text-yellow-900 rounded px-0.5">${match}</mark>`);
+      regex = new RegExp(rule.content.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     }
+
+    let lastIndex = 0;
+    let result = '';
+    let match;
+
+    while ((match = regex.exec(content)) !== null) {
+      result += escapeHtml(content.substring(lastIndex, match.index));
+      result += `<mark class="bg-yellow-200 text-yellow-900 rounded px-0.5">${escapeHtml(match[0])}</mark>`;
+      lastIndex = regex.lastIndex;
+    }
+    result += escapeHtml(content.substring(lastIndex));
+    
+    return result;
   } catch (e) {
     console.error('Highlight error:', e);
+    return escapeHtml(content);
   }
-  return highlighted;
 };
+
+const getHighlightedSnippet = (content, ruleName, maxLength = 300) => {
+  if (!content) return '';
+  if (content.length <= maxLength) return highlightContent(content, ruleName);
+
+  const rule = rules.value.find(r => r.name === ruleName);
+  if (!rule) return content.substring(0, maxLength) + '...';
+
+  let matchIndex = -1;
+  let matchLength = 0;
+
+  try {
+    let regex;
+    if (rule.rule_type === 'regex') {
+      regex = new RegExp(rule.content, 'i');
+    } else {
+      regex = new RegExp(rule.content.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    }
+    const match = regex.exec(content);
+    if (match) {
+      matchIndex = match.index;
+      matchLength = match[0].length;
+    }
+  } catch (e) {
+    console.error('Regex error:', e);
+  }
+
+  if (matchIndex === -1) {
+    return highlightContent(content.substring(0, maxLength) + '...', ruleName);
+  }
+
+  const contextSize = Math.floor((maxLength - matchLength) / 2);
+  let start = Math.max(0, matchIndex - contextSize);
+  let end = Math.min(content.length, matchIndex + matchLength + contextSize);
+
+  if (start === 0) {
+    end = Math.min(content.length, maxLength);
+  } else if (end === content.length) {
+    start = Math.max(0, content.length - maxLength);
+  }
+
+  let snippet = content.substring(start, end);
+  snippet = highlightContent(snippet, ruleName);
+
+  if (start > 0) snippet = '...' + snippet;
+  if (end < content.length) snippet = snippet + '...';
+
+  return snippet;
+};
+
+
 
 const openDetailModal = (result) => {
   selectedDetail.value = result;
+  showFullDetail.value = false;
   showDetailModal.value = true;
 };
 
