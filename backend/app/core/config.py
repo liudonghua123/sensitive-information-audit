@@ -7,7 +7,11 @@ class Settings(BaseSettings):
     SECRET_KEY: SecretStr = "changethis"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
+
+    # Server Settings
+    HOST: str = "localhost"
+    PORT: int = 8000
+
     # SQLite for the application's own database
     DATABASE_URL: str = "sqlite+aiosqlite:///./audit.db"
 
