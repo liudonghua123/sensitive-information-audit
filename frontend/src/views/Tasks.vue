@@ -405,7 +405,7 @@
 
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast, useConfirm } from '../composables/useToast';
 import api from '../api';
@@ -435,14 +435,50 @@ const showDetailModal = ref(false);
 const selectedDetail = ref(null);
 const showFullDetail = ref(false);
 
+let pollingInterval = null;
+const pollingEnabled = ref(false);
+
 const fetchTasks = async () => {
   try {
     const response = await api.get('/tasks/');
     tasks.value = response.data.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+
+    // Auto-refresh only when there are pending/running tasks
+    const hasActiveTasks = tasks.value.some(t => t.status === 'pending' || t.status === 'running');
+    if (hasActiveTasks && !pollingEnabled.value) {
+      startPolling();
+    } else if (!hasActiveTasks && pollingEnabled.value) {
+      stopPolling();
+    }
   } catch (e) {
     console.error(e);
   }
 };
+
+const startPolling = () => {
+  if (pollingInterval) return;
+  pollingEnabled.value = true;
+  pollingInterval = setInterval(fetchTasks, 5000);
+};
+
+const stopPolling = () => {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+  pollingEnabled.value = false;
+};
+
+onMounted(() => {
+  fetchTasks();
+  fetchConnections();
+  fetchRules();
+  // Start polling if there are active tasks
+  const hasActiveTasks = tasks.value.some(t => t.status === 'pending' || t.status === 'running');
+  if (hasActiveTasks) {
+    startPolling();
+  }
+});
 
 const fetchConnections = async () => {
   try {
@@ -810,10 +846,7 @@ const getRuleName = (ruleId) => {
   return rule ? rule.name : `Rule #${ruleId}`;
 };
 
-onMounted(() => {
-  fetchTasks();
-  fetchConnections();
-  fetchRules();
-  setInterval(fetchTasks, 5000);
+onUnmounted(() => {
+  stopPolling();
 });
 </script>

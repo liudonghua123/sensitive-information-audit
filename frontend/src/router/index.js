@@ -7,6 +7,7 @@ import Rules from '../views/Rules.vue';
 import Tasks from '../views/Tasks.vue';
 import Users from '../views/Users.vue';
 import Roles from '../views/Roles.vue';
+import Logs from '../views/Logs.vue';
 import NotFound from '../views/NotFound.vue';
 import Forbidden from '../views/Forbidden.vue';
 
@@ -31,6 +32,11 @@ const routes = [
                 path: 'roles',
                 component: Roles,
                 meta: { permission: 'role:manage' }
+            },
+            {
+                path: 'logs',
+                component: Logs,
+                meta: { requiresAuth: true }
             },
         ]
     },
