@@ -110,5 +110,29 @@ class ScanResult(Base):
     column_name = Column(String, nullable=False)
     sensitive_content_masked = Column(String, nullable=True) # Masked value
     rule_name = Column(String, nullable=True) # Name of the rule matched
-    
+
     task = relationship("ScanTask", back_populates="results")
+
+
+class LogLevel(str, enum.Enum):
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+
+
+class SystemLog(Base):
+    __tablename__ = "system_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    level = Column(String, nullable=False, default=LogLevel.INFO)
+    action = Column(String, nullable=False) # e.g., "user_login", "task_created", "scan_executed"
+    message = Column(Text, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    target_type = Column(String, nullable=True) # e.g., "task", "connection", "user"
+    target_id = Column(Integer, nullable=True)
+    details = Column(Text, nullable=True) # JSON for extra details like SQL executed
+    ip_address = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
