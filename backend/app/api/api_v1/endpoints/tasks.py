@@ -1,6 +1,6 @@
 
 from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db import models
@@ -8,6 +8,7 @@ from app.schemas import Task, TaskCreate, Result, DatabaseMetadata, TableMetadat
 from app.api import deps
 from app.services.scanner import Scanner
 from app.services.connector import DbConnector
+from app.services.logger import log_action
 import json
 from fastapi.responses import StreamingResponse
 from io import BytesIO
@@ -20,18 +21,19 @@ async def create_task(
     db: AsyncSession = Depends(deps.get_db),
     task_in: TaskCreate,
     background_tasks: BackgroundTasks,
+    request: Request,
     current_user: models.User = Depends(deps.get_current_user),
 ) -> Any:
     # Serialize table_names to JSON if provided
     selected_tables_json = None
     if task_in.table_names:
         selected_tables_json = json.dumps(task_in.table_names)
-    
+
     # Serialize rule_ids to JSON if provided
     selected_rules_json = None
     if task_in.rule_ids:
         selected_rules_json = json.dumps(task_in.rule_ids)
-    
+
     task = models.ScanTask(
         connection_id=task_in.connection_id,
         status=models.TaskStatus.PENDING,
@@ -41,11 +43,27 @@ async def create_task(
     db.add(task)
     await db.commit()
     await db.refresh(task)
-    
+
+    # Log task creation
+    await log_action(
+        db,
+        action="task_created",
+        level="info",
+        message=f"Scan task created: Task #{task.id}",
+        user_id=current_user.id,
+        target_type="task",
+        target_id=task.id,
+        details={
+            "connection_id": task_in.connection_id,
+            "table_names": task_in.table_names,
+            "rule_ids": task_in.rule_ids,
+        },
+    )
+
     # Start background task
     scanner = Scanner(db)
     background_tasks.add_task(scanner.run_scan, task.id)
-    
+
     return task
 
 @router.get("/", response_model=List[Task])

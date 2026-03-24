@@ -7,6 +7,7 @@ from app.db import models
 from app.schemas import Task, Rule
 from app.services.connector import DbConnector
 from app.db.session import AsyncSessionLocal
+from app.services.logger import log_action
 
 class Scanner:
     def __init__(self, db: AsyncSession):
@@ -66,64 +67,92 @@ class Scanner:
                     def get_tables(sync_conn):
                         inspector = inspect(sync_conn)
                         return inspector.get_table_names()
-                    
+
                     all_tables = await target_conn.run_sync(get_tables)
-                    
+
                     # Filter tables if selection provided
                     tables_to_scan = selected_tables if selected_tables else all_tables
-                    
+
                     for table in tables_to_scan:
                         if table not in all_tables:
                             continue  # Skip if table doesn't exist
-                        
+
                         summary_stats['total_tables_scanned'] += 1
                         table_issues = 0
-                        
-                        # Scan each table
-                        # Simple implementation: Select * limit 1000 (or pagination)
-                        # For now, just scan first 100 rows
-                        result = await target_conn.execute(text(f"SELECT * FROM {table} LIMIT 100"))
-                        rows = result.fetchall()
-                        columns = result.keys()
-                        
-                        summary_stats['total_rows_scanned'] += len(rows)
-                        
-                        for row in rows:
-                            for idx, col_name in enumerate(columns):
-                                cell_value = str(row[idx])
-                                for rule in rules:
-                                    # rule is a Row object, access by index or name? 
-                                    # SQLAlchemy 1.4+ Row is like a named tuple
-                                    rule_content = rule.content
-                                    rule_type = rule.rule_type
-                                    rule_name = rule.name
-                                    
-                                    match = False
-                                    if rule_type == "regex":
-                                        if re.search(rule_content, cell_value):
-                                            match = True
-                                    elif rule_type == "keyword":
-                                        if rule_content in cell_value:
-                                            match = True
-                                            
-                                    if match:
-                                        # Found sensitive info
-                                        scan_result = models.ScanResult(
-                                            task_id=task.id,
-                                            table_name=table,
-                                            column_name=col_name,
-                                            sensitive_content_masked=cell_value, # Store raw content for highlighting
-                                            rule_name=rule_name
-                                        )
-                                        session.add(scan_result)
-                                        
-                                        # Update summary stats
-                                        summary_stats['total_issues_found'] += 1
-                                        table_issues += 1
-                                        if rule_name not in summary_stats['rules_triggered']:
-                                            summary_stats['rules_triggered'][rule_name] = 0
-                                        summary_stats['rules_triggered'][rule_name] += 1
-                        
+
+                        # Scan all rows in the table - use streaming/batch approach
+                        # First get total count
+                        count_sql = f"SELECT COUNT(*) as cnt FROM {table}"
+                        await log_action(
+                            session,
+                            action="scan_sql",
+                            level="debug",
+                            message=f"Executing SQL: {count_sql}",
+                            details={"sql": count_sql, "table": table},
+                        )
+                        count_result = await target_conn.execute(text(count_sql))
+                        total_rows = count_result.fetchone()[0]
+
+                        # Scan in batches of 1000
+                        batch_size = 1000
+                        offset = 0
+
+                        while offset < total_rows:
+                            sql = f"SELECT * FROM {table} LIMIT {batch_size} OFFSET {offset}"
+                            await log_action(
+                                session,
+                                action="scan_sql",
+                                level="debug",
+                                message=f"Executing SQL: {sql}",
+                                details={"sql": sql, "table": table, "batch": f"{offset}-{offset+batch_size}"},
+                            )
+                            result = await target_conn.execute(text(sql))
+                            rows = result.fetchall()
+                            columns = result.keys()
+
+                            if not rows:
+                                break
+
+                            summary_stats['total_rows_scanned'] += len(rows)
+
+                            for row in rows:
+                                for idx, col_name in enumerate(columns):
+                                    cell_value = str(row[idx])
+                                    for rule in rules:
+                                        # rule is a Row object, access by index or name?
+                                        # SQLAlchemy 1.4+ Row is like a named tuple
+                                        rule_content = rule.content
+                                        rule_type = rule.rule_type
+                                        rule_name = rule.name
+
+                                        match = False
+                                        if rule_type == "regex":
+                                            if re.search(rule_content, cell_value):
+                                                match = True
+                                        elif rule_type == "keyword":
+                                            if rule_content in cell_value:
+                                                match = True
+
+                                        if match:
+                                            # Found sensitive info
+                                            scan_result = models.ScanResult(
+                                                task_id=task.id,
+                                                table_name=table,
+                                                column_name=col_name,
+                                                sensitive_content_masked=cell_value, # Store raw content for highlighting
+                                                rule_name=rule_name
+                                            )
+                                            session.add(scan_result)
+
+                                            # Update summary stats
+                                            summary_stats['total_issues_found'] += 1
+                                            table_issues += 1
+                                            if rule_name not in summary_stats['rules_triggered']:
+                                                summary_stats['rules_triggered'][rule_name] = 0
+                                            summary_stats['rules_triggered'][rule_name] += 1
+
+                            offset += batch_size
+
                         if table_issues > 0:
                             summary_stats['tables_with_issues'].append({
                                 'table_name': table,
