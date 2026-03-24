@@ -30,12 +30,68 @@ FastAPI-based backend for the Sensitive Information Audit System.
 
 4. **Run the server**
    ```bash
-   uv run python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+   uv run python main.py
+   ```
+   The server will start and automatically open your browser at `http://localhost:8000`.
+
+   You can customize the host and port:
+   ```bash
+   HOST=0.0.0.0 PORT=8080 uv run python main.py
+   ```
+
+   Or configure them in `.env`:
+   ```
+   HOST=0.0.0.0
+   PORT=8000
    ```
 
 5. **Package an executable**
    ```bash
-   pyinstaller main.py --onefile --name sensitive-information-audit.exe --add-data "app;app" --hidden-import uvicorn --hidden-import aiosqlite --hidden-import aiomysql --hidden-import bcrypt --hidden-import passlib.handlers.bcrypt --paths "/full/path/to/.venv/Lib/site-packages"
+   pyinstaller sensitive-information-audit.exe.spec
+   ```
+   The executable will be created in the `dist` folder.
+
+   To build from scratch with all required hidden imports:
+   ```bash
+   pyinstaller main.py --onefile --name sensitive-information-audit.exe \
+     --add-data "app;app" \
+     --hidden-import fastapi \
+     --hidden-import uvicorn \
+     --hidden-import uvicorn.logging \
+     --hidden-import uvicorn.loops \
+     --hidden-import uvicorn.loops.auto \
+     --hidden-import uvicorn.protocols \
+     --hidden-import uvicorn.protocols.http \
+     --hidden-import uvicorn.protocols.http.h11 \
+     --hidden-import uvicorn.protocols.websockets \
+     --hidden-import uvicorn.protocols.websockets.auto \
+     --hidden-import uvicorn.lifespan \
+     --hidden-import uvicorn.lifespan.on \
+     --hidden-import starlette \
+     --hidden-import starlette.responses \
+     --hidden-import starlette.routing \
+     --hidden-import starlette.middleware \
+     --hidden-import starlette.middleware.cors \
+     --hidden-import starlette.staticfiles \
+     --hidden-import sqlalchemy \
+     --hidden-import sqlalchemy.ext \
+     --hidden-import sqlalchemy.ext.asyncio \
+     --hidden-import aiosqlite \
+     --hidden-import aiomysql \
+     --hidden-import asyncpg \
+     --hidden-import bcrypt \
+     --hidden-import passlib \
+     --hidden-import passlib.handlers \
+     --hidden-import passlib.handlers.bcrypt \
+     --hidden-import pydantic \
+     --hidden-import pydantic_settings \
+     --hidden-import python_jose \
+     --hidden-import python_jose.cryptography \
+     --hidden-import cryptography \
+     --hidden-import python_multipart \
+     --hidden-import docx \
+     --hidden-import reportlab \
+     --paths ".venv/Lib/site-packages"
    ```
 
 ## API Documentation
@@ -76,15 +132,17 @@ backend/
 See `.env.example` for all available configuration options.
 
 Key variables:
+- `HOST`: Server host (default: localhost)
+- `PORT`: Server port (default: 8000)
 - `SECRET_KEY`: JWT secret key (change in production!)
 - `DATABASE_URL`: Application database URL
 - `ACCESS_TOKEN_EXPIRE_MINUTES`: Token expiration time
 
 ## Development
 
-### Running with auto-reload
+The development server auto-reloads on code changes:
 ```bash
-uv run python -m uvicorn app.main:app --reload
+uv run python main.py
 ```
 
 ### Database migrations

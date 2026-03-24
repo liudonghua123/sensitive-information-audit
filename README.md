@@ -44,9 +44,9 @@ A comprehensive database security audit system for detecting and managing sensit
    
    # Create admin user
    uv run python create_admin.py
-   
-   # Start the server
-   uv run python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+   # Start the server (opens browser automatically)
+   cd backend && uv run python main.py
    ```
 
 3. **Frontend Setup**
@@ -96,7 +96,7 @@ sensitive-information-audit/
 
 ```bash
 cd backend
-uv run python -m uvicorn app.main:app --reload
+uv run python main.py
 ```
 
 API documentation available at `http://localhost:8000/api/v1/docs`
